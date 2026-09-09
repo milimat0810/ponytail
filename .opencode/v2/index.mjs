@@ -1,17 +1,15 @@
 // @ts-check
 
-import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Plugin, Skill } from '@opencode/plugin';
 import { Schema } from 'effect';
+import { getDefaultMode, normalizeMode } from '../../hooks/ponytail-config.js';
+import { getPonytailInstructions } from '../../hooks/ponytail-instructions.js';
+import { parseCommandFile } from '../plugins/ponytail-frontmatter.cjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(import.meta.url);
-const { getDefaultMode, normalizeMode } = require('../../hooks/ponytail-config');
-const { getPonytailInstructions } = require('../../hooks/ponytail-instructions');
-const { parseCommandFile } = require('../plugins/ponytail-frontmatter.cjs');
 
 const commandDir = path.join(__dirname, '..', 'command');
 const skillsDir = path.resolve(__dirname, '../../skills');
@@ -30,14 +28,6 @@ function skillDefinitions() {
       ?.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join(' ');
     return [Schema.decodeUnknownSync(Skill.Info)({ id: name, name, description, location, content: match[2].trim() })];
   });
-}
-
-/** @param {string} template @param {string} input */
-function expandCommandTemplate(template, input) {
-  const expanded = template.replaceAll('$ARGUMENTS', () => input);
-  return !template.includes('$ARGUMENTS') && input.trim()
-    ? `${expanded}\n\n${input}`.trim()
-    : expanded.trim();
 }
 
 /** @template {{ mention?: unknown }} T @param {readonly T[]} [references] */
@@ -70,7 +60,7 @@ export default Plugin.define({
           name,
           description,
           execute: async ({ sessionID, prompt, delivery }) => {
-            let text = expandCommandTemplate(template, prompt.text);
+            let text = `${template}\n\n${prompt.text}`.trim();
             if (name === 'ponytail') {
               const argument = prompt.text.trim();
               const mode = normalizeMode(argument);
