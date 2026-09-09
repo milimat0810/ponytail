@@ -193,9 +193,15 @@ The `./` path resolves against your project's `opencode.json`; to share one chec
 
 In V2, `/ponytail lite|full|ultra|off` stores the mode for the current session before submitting the command prompt. The selection survives plugin reloads and server restarts. Other sessions keep their own selections. Bare `/ponytail` reports the effective mode; invalid levels leave it unchanged. New sessions use `PONYTAIL_DEFAULT_MODE` or `defaultMode` in the Ponytail config described below. One-shot commands such as `/ponytail-review` do not change the mode.
 
+Subagents inherit the nearest ancestor's selected mode unless they have an explicit selection of their own. They follow later parent changes too, including `off`. Moving a session preserves its selection when the same plugin is available at the destination.
+
+Mode commands execute immediately, even with queued delivery. An already-dispatched model request keeps its original instructions; subsequent requests use the latest stored selection. Concurrent commands in one session share that selection, not a separate mode snapshot for each queued prompt. Send commands sequentially when their order matters.
+
 The adapter is tested against OpenCode V2 `0.0.0-beta-19296`. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
 
 For an end-to-end check, run `node scripts/verify-opencode-v2.mjs [plugin-directory]` with `opencode2` on PATH. It starts a private server and a local mock model endpoint, checks outgoing requests and session isolation, then restarts the private server to check persistence. It uses temporary configuration and data directories and makes no paid model calls.
+
+This check also covers concurrent commands, queued switching during an in-flight request, a session move, real subagent creation and inheritance, tool continuations, and 20 later requests. For a small behavioral sample using your authenticated model provider, run `python3 scripts/check-ponytail-adherence.py [provider/model]`. It makes 12 sequential coding and conversational requests in a fresh session and saves responses for manual review. That sample uses real model quota and is not proof of universal compliance or a comparison against Ponytail disabled.
 
 ### Gemini CLI
 

@@ -54,7 +54,15 @@ export default Plugin.define({
     });
     const bundledSkills = skillDefinitions();
     /** @param {string} sessionID */
-    const readMode = async (sessionID) => normalizeMode(await ctx.storage.get(`mode/${sessionID}`)) || getDefaultMode();
+    const readMode = async (sessionID) => {
+      while (sessionID) {
+        const mode = normalizeMode(await ctx.storage.get(`mode/${sessionID}`));
+        if (mode) return mode;
+        const session = await ctx.session.get({ sessionID });
+        sessionID = session.parentID || '';
+      }
+      return getDefaultMode();
+    };
 
     await ctx.command.transform((commands) => {
       for (const { name, description, template } of definitions) {

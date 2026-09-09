@@ -15,7 +15,7 @@ test.before(async () => {
   plugin = (await import('@dietrichgebert/ponytail/v2')).default;
 });
 
-function context(storage = new Map()) {
+function context(storage = new Map(), parents = {}) {
   const commands = new Map();
   const skills = [];
   const hooks = {};
@@ -39,6 +39,7 @@ function context(storage = new Map()) {
         transform: async (callback) => callback({ add: (skill) => skills.push(skill) }),
       },
       session: {
+        get: async ({ sessionID }) => ({ id: sessionID, parentID: parents[sessionID] }),
         hook: async (name, callback) => { hooks[name] = callback; },
         prompt: async (prompt) => { decodePrompt(prompt); prompts.push(prompt); },
       },
@@ -118,6 +119,27 @@ test('status, invalid arguments, and review preserve the selected mode', async (
   const event = { sessionID: 'session-1', system: [] };
   await ctx.hooks.context(event);
   assert.match(event.system[0].text, /level: ultra/);
+});
+
+test('children inherit the nearest ancestor mode until explicitly overridden', async () => {
+  const ctx = context(new Map(), { child: 'parent', grandchild: 'child' });
+  await plugin.setup(ctx.value);
+  const select = (sessionID, text) => ctx.commands.get('ponytail').execute({ sessionID, prompt: { text }, delivery: 'steer' });
+  const mode = async (sessionID) => {
+    const event = { sessionID, system: [] };
+    await ctx.hooks.context(event);
+    return event.system[0]?.text.match(/level: (\w+)/)?.[1] || 'off';
+  };
+  await select('parent', 'off');
+  assert.equal(await mode('child'), 'off');
+  assert.equal(await mode('grandchild'), 'off');
+  await select('parent', 'ultra');
+  assert.equal(await mode('grandchild'), 'ultra');
+  await select('child', 'lite');
+  await select('parent', 'full');
+  assert.equal(await mode('child'), 'lite');
+  assert.equal(await mode('grandchild'), 'lite');
+  assert.equal(await mode('parent'), 'full');
 });
 
 test('expanded prompts preserve references without stale mention offsets or mutation', async () => {
