@@ -46,7 +46,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@opencode/plugin": "2.0.3",
+    "@opencode/plugin": "2.0.5",
     "effect": "4.0.0-rc.112"
   },
   "devDependencies": {

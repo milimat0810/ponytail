@@ -57,7 +57,9 @@ test('exports the V2 id/setup contract and registers commands and skills', async
   assert.equal(typeof ctx.commands.get('ponytail').execute, 'function');
   assert.ok(ctx.skills.some((skill) => skill.id === 'ponytail'));
   assert.ok(ctx.skills.some((skill) => skill.id === 'ponytail-review'));
-  assert.match(ctx.skills.find((skill) => skill.id === 'ponytail').description, /laziest solution/);
+  const ponytail = ctx.skills.find((skill) => skill.id === 'ponytail');
+  assert.match(ponytail.description, /laziest solution/);
+  assert.match(ponytail.path, /skills[/\\]ponytail[/\\]SKILL\.md$/);
 });
 
 test('executes commands through the V2 session prompt API', async () => {

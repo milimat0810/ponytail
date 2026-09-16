@@ -104,9 +104,15 @@ async function start() {
     server.stdout.on('data', read);
     server.stderr.on('data', read);
   });
-  await api('/api/plugin/await-activation', {});
-  const plugins = await api('/api/plugin');
-  assert.ok(plugins.data.some((p) => p.id === 'ponytail'), JSON.stringify(plugins));
+  let ponytail;
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const plugins = await api('/api/plugin');
+    ponytail = plugins.data.find((candidate) => candidate.id === 'ponytail');
+    if (ponytail?.state.status === 'active') break;
+    if (ponytail?.state.status === 'failed') assert.fail(JSON.stringify(ponytail));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.equal(ponytail?.state.status, 'active', JSON.stringify(ponytail));
   const commands = await api('/api/command');
   assert.equal(commands.data.filter((c) => c.name.startsWith('ponytail')).length, 6);
   const skills = await api('/api/skill');
@@ -132,8 +138,8 @@ async function api(endpoint, body) {
 async function turn(session, mode, expected) {
   const before = requests.length;
   const endpoint = mode === null ? 'prompt' : 'command';
-  await api(`/api/session/${session}/${endpoint}`, mode === null ? { text: 'Reply OK.' } : { command: 'ponytail', text: mode });
-  await api(`/api/session/${session}/wait`, {});
+  await api(`/api/session/${session}/${endpoint}`, mode === null ? { text: 'Reply OK.' } : { name: 'ponytail', text: mode });
+  await api(`/api/experimental/session/${session}/wait`, {});
   const outgoing = requests.slice(before).filter((r) => r.messages?.some((m) => ['system', 'developer'].includes(m.role) && JSON.stringify(m.content).includes('PONYTAIL_V2_VERIFICATION')));
   assert.ok(outgoing.length, `No model request for ${mode}; inspect ${root}`);
   for (const request of outgoing) {
@@ -174,10 +180,10 @@ try {
   await turn(first, 'typo', 'lite');
   // Separate sessions must not race through a machine-global mode flag.
   await Promise.all([
-    api(`/api/session/${first}/command`, { command: 'ponytail', text: 'ultra' }),
-    api(`/api/session/${second}/command`, { command: 'ponytail', text: 'off' }),
+    api(`/api/session/${first}/command`, { name: 'ponytail', text: 'ultra' }),
+    api(`/api/session/${second}/command`, { name: 'ponytail', text: 'off' }),
   ]);
-  await Promise.all([api(`/api/session/${first}/wait`, {}), api(`/api/session/${second}/wait`, {})]);
+  await Promise.all([api(`/api/experimental/session/${first}/wait`, {}), api(`/api/experimental/session/${second}/wait`, {})]);
   await turn(first, null, 'ultra');
   await turn(second, null, 'off');
   const moved = path.join(root, 'moved');
@@ -191,12 +197,12 @@ try {
   hold = { started, release: new Promise((resolve) => { release = resolve; }) };
   await api(`/api/session/${first}/prompt`, { text: 'HOLD_PROBE' });
   const running = await admitted;
-  await Promise.all(['lite', 'ultra'].map((text) => api(`/api/session/${first}/command`, { command: 'ponytail', text, delivery: 'queue' })));
-  await api(`/api/session/${first}/command`, { command: 'ponytail', text: 'off', delivery: 'queue' });
+  await Promise.all(['lite', 'ultra'].map((text) => api(`/api/session/${first}/command`, { name: 'ponytail', text, delivery: 'queue' })));
+  await api(`/api/session/${first}/command`, { name: 'ponytail', text: 'off', delivery: 'queue' });
   assert.match(JSON.stringify(running.messages.filter((m) => m.role === 'system')), /level: ultra/);
   const boundary = requests.length;
   release();
-  await api(`/api/session/${first}/wait`, {});
+  await api(`/api/experimental/session/${first}/wait`, {});
   const queued = requests.slice(boundary).filter((r) => r.messages?.some((m) => m.role === 'system' && JSON.stringify(m.content).includes('PONYTAIL_V2_VERIFICATION')));
   assert.ok(queued.length, 'Queued command must dispatch after the in-flight request');
   for (const request of queued) assert.doesNotMatch(JSON.stringify(request.messages.filter((m) => m.role === 'system')), /PONYTAIL MODE ACTIVE/);
@@ -204,7 +210,7 @@ try {
 
   const beforeChild = requests.length;
   await api(`/api/session/${first}/prompt`, { text: 'SPAWN_PROBE' });
-  await api(`/api/session/${first}/wait`, {});
+  await api(`/api/experimental/session/${first}/wait`, {});
   const children = requests.slice(beforeChild).filter((r) => r.messages?.some((m) => m.role === 'system' && JSON.stringify(m.content).includes('PONYTAIL_V2_CHILD')));
   assert.ok(children.length, 'Expected a real subagent request');
   for (const request of requests.slice(beforeChild)) assert.doesNotMatch(JSON.stringify(request.messages.filter((m) => m.role === 'system')), /PONYTAIL MODE ACTIVE/);
@@ -215,7 +221,7 @@ try {
   // Exercise the real child again: inheritance follows later parent changes.
   const childStart = requests.length;
   await api(`/api/session/${childID}/prompt`, { text: 'Reply OK.' });
-  await api(`/api/session/${childID}/wait`, {});
+  await api(`/api/experimental/session/${childID}/wait`, {});
   const childRequest = requests.slice(childStart).find((r) => r.messages?.some((m) => m.role === 'system' && JSON.stringify(m.content).includes('PONYTAIL_V2_CHILD')));
   assert.ok(childRequest);
   assert.match(JSON.stringify(childRequest.messages.filter((m) => m.role === 'system')), /level: ultra/);

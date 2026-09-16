@@ -199,7 +199,7 @@ Mode commands execute immediately, even with queued delivery. An already-dispatc
 
 `off` disables plugin injection, not any separately loaded `AGENTS.md` instructions.
 
-The adapter targets OpenCode V2 `2.0.3`. It registers both `context` and `generate` hooks so ordinary agent requests, tool continuations, and transient `session.generate` calls receive the effective session mode. Compaction summaries and titles use OpenCode's dedicated prompts; the next ordinary request receives Ponytail instructions again. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
+The adapter targets OpenCode V2 `2.0.5`. It registers both `context` and `generate` hooks so ordinary agent requests, tool continuations, and transient `session.generate` calls receive the effective session mode. Compaction summaries and titles use OpenCode's dedicated prompts; the next ordinary request receives Ponytail instructions again. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
 
 For an end-to-end check, run `node scripts/verify-opencode-v2.mjs [plugin-directory]` with `opencode2` on PATH. It starts a private server and a local mock model endpoint, checks outgoing requests and session isolation, then restarts the private server to check persistence. It uses temporary configuration and data directories and makes no paid model calls.
 
