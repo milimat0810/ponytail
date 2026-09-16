@@ -181,7 +181,7 @@ Run from a checkout instead (the plugin reuses `hooks/` and `skills/`):
 { "plugin": ["./.opencode/plugins/ponytail.mjs"] }
 ```
 
-For a V2 checkout, use the V2 adapter's path instead:
+For a V2 checkout, run `npm ci` in the checkout, then use the V2 adapter's directory instead:
 
 ```json
 { "plugins": ["./.opencode/v2"] }
@@ -189,7 +189,7 @@ For a V2 checkout, use the V2 adapter's path instead:
 
 Injects the ruleset every turn at the active level; adds the `/ponytail` commands (see [Commands](#commands)). OpenCode also auto-loads this repo's `AGENTS.md`, so the rules hold even without the plugin. The plugin adds the `lite/full/ultra/off` levels.
 
-The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, point it at the absolute path of the `.mjs` instead (it finds its `hooks/` and `skills/` relative to its own file).
+The `./` path resolves against your project's `opencode.json`; to share one checkout across projects, use the absolute path of the V1 `.mjs` file or the V2 `.opencode/v2` directory. Both adapters find `hooks/` and `skills/` relative to their own files.
 
 In V2, `/ponytail lite|full|ultra|off` stores the mode for the current session before submitting the command prompt. The selection survives plugin reloads and server restarts. Other sessions keep their own selections. Bare `/ponytail` reports the effective mode; invalid levels leave it unchanged. New sessions use `PONYTAIL_DEFAULT_MODE` or `defaultMode` in the Ponytail config described below. One-shot commands such as `/ponytail-review` do not change the mode.
 
@@ -197,9 +197,13 @@ Subagents inherit the nearest ancestor's selected mode unless they have an expli
 
 Mode commands execute immediately, even with queued delivery. An already-dispatched model request keeps its original instructions; subsequent requests use the latest stored selection. Concurrent commands in one session share that selection, not a separate mode snapshot for each queued prompt. Send commands sequentially when their order matters.
 
+`off` disables plugin injection, not any separately loaded `AGENTS.md` instructions.
+
 The adapter targets OpenCode V2 `2.0.3`. It registers both `context` and `generate` hooks so ordinary agent requests, tool continuations, and transient `session.generate` calls receive the effective session mode. Compaction summaries and titles use OpenCode's dedicated prompts; the next ordinary request receives Ponytail instructions again. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
 
 For an end-to-end check, run `node scripts/verify-opencode-v2.mjs [plugin-directory]` with `opencode2` on PATH. It starts a private server and a local mock model endpoint, checks outgoing requests and session isolation, then restarts the private server to check persistence. It uses temporary configuration and data directories and makes no paid model calls.
+
+The verifier supports native executables and npm installations on Windows without a shell. For a custom installation or a specific CLI version, set `OPENCODE_V2_BIN` to the actual executable (on Windows, the full path to `opencode2.exe`, not a `.cmd` or `.ps1` wrapper). When testing an installed npm archive, pass its `.opencode/v2` directory as `plugin-directory`.
 
 This check also covers concurrent commands, queued switching during an in-flight request, a session move, real subagent creation and inheritance, tool continuations, and 20 later requests. For a small behavioral sample using your authenticated model provider, run `python3 scripts/check-ponytail-adherence.py [provider/model]`. It makes 12 sequential coding and conversational requests in a fresh session and saves responses for manual review. That sample uses real model quota and is not proof of universal compliance or a comparison against Ponytail disabled.
 
