@@ -47,7 +47,7 @@ function context(storage = new Map(), parents = {}) {
   };
 }
 
-test('exports the V2 id/setup contract and registers commands and beta skills', async () => {
+test('exports the V2 id/setup contract and registers commands and skills', async () => {
   assert.equal(plugin.id, 'ponytail');
   assert.equal(typeof plugin.setup, 'function');
   const ctx = context();
@@ -84,9 +84,9 @@ test('mode switches apply to the same request, later turns, and only that sessio
     await ctx.commands.get('ponytail').execute({
       sessionID: 'session-1', prompt: { text: mode }, delivery: 'steer',
     });
-    for (let turn = 0; turn < 2; turn++) {
+    for (const hook of ['context', 'generate', 'context']) {
       const event = { sessionID: 'session-1', system: [] };
-      await ctx.hooks.context(event);
+      await ctx.hooks[hook](event);
       decodeSystem(event.system);
       if (mode === 'off') assert.deepEqual(event.system, []);
       else assert.match(event.system[0].text, new RegExp(`level: ${mode}`));

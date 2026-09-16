@@ -169,7 +169,7 @@ OpenCode V1 uses the package's root export. Add to `opencode.json`:
 { "plugin": ["@dietrichgebert/ponytail"] }
 ```
 
-OpenCode V2 is beta and has a separate plugin API. Use the explicit V2 export and the plural `plugins` field:
+OpenCode V2 has a separate plugin API. Use the explicit V2 export and the plural `plugins` field:
 
 ```json
 { "plugins": ["@dietrichgebert/ponytail/v2"] }
@@ -197,7 +197,7 @@ Subagents inherit the nearest ancestor's selected mode unless they have an expli
 
 Mode commands execute immediately, even with queued delivery. An already-dispatched model request keeps its original instructions; subsequent requests use the latest stored selection. Concurrent commands in one session share that selection, not a separate mode snapshot for each queued prompt. Send commands sequentially when their order matters.
 
-The adapter is tested against OpenCode V2 `0.0.0-beta-19296`. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
+The adapter targets OpenCode V2 `2.0.3`. It registers both `context` and `generate` hooks so ordinary agent requests, tool continuations, and transient `session.generate` calls receive the effective session mode. Compaction summaries and titles use OpenCode's dedicated prompts; the next ordinary request receives Ponytail instructions again. Run `npm run typecheck:v2` and `node --test tests/opencode-v2-plugin.test.js` when updating its API dependency.
 
 For an end-to-end check, run `node scripts/verify-opencode-v2.mjs [plugin-directory]` with `opencode2` on PATH. It starts a private server and a local mock model endpoint, checks outgoing requests and session isolation, then restarts the private server to check persistence. It uses temporary configuration and data directories and makes no paid model calls.
 

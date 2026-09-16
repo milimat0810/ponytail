@@ -126,14 +126,28 @@ async function turn(session, mode, expected) {
   }
   console.log(`${mode === null ? 'next turn' : `/ponytail ${mode}`}: ${expected}`);
 }
+async function generate(session, expected) {
+  const before = requests.length;
+  await api(`/api/session/${session}/generate`, { prompt: 'GENERATE_PROBE: Reply OK.' });
+  const outgoing = requests.slice(before).filter((r) => r.messages?.some((m) => m.role === 'user' && JSON.stringify(m.content).includes('GENERATE_PROBE')));
+  assert.ok(outgoing.length, 'Expected a transient generation request');
+  for (const request of outgoing) {
+    const system = JSON.stringify(request.messages.filter((m) => ['system', 'developer'].includes(m.role)));
+    const mode = system.match(/PONYTAIL MODE ACTIVE.*?level: (\w+)/)?.[1] || 'off';
+    assert.equal(mode, expected, 'Transient generation must use the session mode');
+  }
+  console.log(`transient generation: ${expected}`);
+}
 try {
   await start();
   const first = (await api('/api/session', { model: { providerID: 'test', id: 'probe' } })).data.id;
   const second = (await api('/api/session', { model: { providerID: 'test', id: 'probe' } })).data.id;
   await turn(first, 'ultra', 'ultra');
+  await generate(first, 'ultra');
   await turn(first, null, 'ultra');
   await turn(second, null, 'full');
   await turn(first, 'off', 'off');
+  await generate(first, 'off');
   await turn(first, null, 'off');
   await stop();
   await start();

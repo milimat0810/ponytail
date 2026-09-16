@@ -88,7 +88,8 @@ export default Plugin.define({
       for (const skill of bundledSkills) skills.add(skill);
     });
 
-    await ctx.session.hook('context', async (event) => {
+    /** @param {import('@opencode/plugin/promise/session').SessionContext} event */
+    const inject = async (event) => {
       const mode = await readMode(event.sessionID);
       if (mode === 'off') return;
       const instructions = getPonytailInstructions(mode);
@@ -98,6 +99,8 @@ export default Plugin.define({
       } else {
         event.system.push({ type: 'text', text: instructions });
       }
-    });
+    };
+    await ctx.session.hook('context', inject);
+    await ctx.session.hook('generate', inject);
   },
 });
